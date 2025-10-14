@@ -131,7 +131,7 @@ async function getYahooCandleData(ticker){
     }catch{}
   }
 
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=6mo&interval=1d`;
+  /*const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=6mo&interval=1d`;
   let j;
   try{
     const res = await timedFetch(url, CONFIG.fetchTimeoutMs);
@@ -141,7 +141,25 @@ async function getYahooCandleData(ticker){
     // one retry
     const res2 = await timedFetch(url, CONFIG.fetchTimeoutMs);
     j = await res2.json();
-  }
+  }*/
+
+// --- PATCHED Yahoo fetch (CORS-safe) ---
+const baseUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=6mo&interval=1d`;
+const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(baseUrl);
+
+let j;
+try {
+  const res = await timedFetch(proxyUrl, CONFIG.fetchTimeoutMs);
+  j = await res.json();
+  if (!j.chart?.result?.length) throw new Error("Empty result");
+} catch (err) {
+  console.warn("Yahoo fetch failed once, retrying...", err);
+  const res2 = await timedFetch(proxyUrl, CONFIG.fetchTimeoutMs);
+  j = await res2.json();
+}
+
+
+  
   const q=j.chart.result[0]; const p=q.indicators.quote[0]; const ts=q.timestamp;
   const rows = ts.map((t,i)=>({
     x:new Date(t*1000),
