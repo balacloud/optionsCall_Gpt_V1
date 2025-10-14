@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.3.0"></script>
+
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -269,7 +273,7 @@ const Patterns = {
 let candleChart=null, volChart=null;
 
 const Renderer = {
-  drawCandleChart(t, data, ma20, ma50, ma200, sup, res){
+  /*drawCandleChart(t, data, ma20, ma50, ma200, sup, res){
     candleChart?.destroy();
     const ctx = $("#candleChart").getContext("2d");
     const srDatasets = [
@@ -301,8 +305,90 @@ const Renderer = {
         scales:{ x:{type:'time', time:{unit:'week'}}, y:{title:{display:true,text:'Price ($)'}} }
       }
     });
-  },
+  }*/
+  //fixed
+  drawCandleChart(t, data, ma20, ma50, ma200, sup, res){
+  // --- Safe cleanup for previous chart instance ---
+  if (candleChart && typeof candleChart.destroy === "function") {
+    try { candleChart.destroy(); } catch(e) { console.warn("Chart cleanup", e); }
+    candleChart = null;
+  }
+
+  const ctx = $("#candleChart").getContext("2d");
+
+  const srDatasets = [
+    ...sup.map(lv => ({
+      label:`Support @ ${lv.price.toFixed(2)}`,
+      type:'line',
+      data:[{x:data[0].x, y:lv.price},{x:data.at(-1).x, y:lv.price}],
+      borderColor:'#2e7d32', borderDash:[6,6], borderWidth:1, pointRadius:0
+    })),
+    ...res.map(lv => ({
+      label:`Resistance @ ${lv.price.toFixed(2)}`,
+      type:'line',
+      data:[{x:data[0].x, y:lv.price},{x:data.at(-1).x, y:lv.price}],
+      borderColor:'#b71c1c', borderDash:[6,6], borderWidth:1, pointRadius:0
+    }))
+  ];
+
+  candleChart = new Chart(ctx, {
+    type:'candlestick',
+    data:{
+      datasets:[
+        { label:t, data:data, borderColor:'rgba(0,0,0,0.7)',
+          color:{up:'#4caf50',down:'#f44336',unchanged:'#9aa4b2'} },
+        { label:'DMA 20', data:ma20, type:'line', borderColor:'#2196f3', borderWidth:1.5, pointRadius:0 },
+        { label:'DMA 50', data:ma50, type:'line', borderColor:'#9c27b0', borderWidth:1.5, pointRadius:0 },
+        { label:'DMA 200',data:ma200,type:'line', borderColor:'#ff9800', borderWidth:1.5, pointRadius:0 },
+        ...srDatasets
+      ]
+    },
+    options:{
+      maintainAspectRatio:false,
+      plugins:{legend:{display:true}, tooltip:{mode:'index', intersect:false}},
+      interaction:{mode:'index', intersect:false},
+      scales:{
+        x:{type:'time',time:{unit:'week'}},
+        y:{title:{display:true,text:'Price ($)'}}
+      }
+    }
+  });
+},
+//fixed
   drawVolumeChart(data){
+  if (volChart && typeof volChart.destroy === "function") {
+    try { volChart.destroy(); } catch(e) { console.warn("Chart cleanup", e); }
+    volChart = null;
+  }
+
+  const ctx = $("#volChart").getContext("2d");
+
+  volChart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:data.map(d=>d.x),
+      datasets:[{
+        label:'Volume',
+        data:data.map(d=>d.v),
+        backgroundColor:data.map(d=>d.c>d.o
+          ?'rgba(76,175,80,0.5)'
+          :'rgba(244,67,54,0.5)'),
+        borderWidth:0
+      }]
+    },
+    options:{
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{mode:'index',intersect:false}},
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{display:false},
+        y:{title:{display:true,text:'Volume'}}
+      }
+    }
+  });
+},
+
+  /*drawVolumeChart(data){
     volChart?.destroy();
     const ctx = $("#volChart").getContext("2d");
     volChart = new Chart(ctx,{
@@ -320,7 +406,7 @@ const Renderer = {
         scales:{ x:{display:false}, y:{title:{display:true,text:'Volume'}} }
       }
     });
-  },
+  },*/
   updateSignalPanel(t, verdict, total, confidence, stack, pat, vol, srP, sup, res, patternTag){
     const box=$("#resultBox");
     box.className = verdict.cls;
