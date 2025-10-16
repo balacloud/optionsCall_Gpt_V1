@@ -34,6 +34,48 @@
   <script>
   // (Insert the full JavaScript logic: data fetch hybrid mode, chart rendering, signals, summary)
   // Make sure your getCandleData, getYahooCandleData, getLocalCSV, etc. are included.
+  
+async function loadSummary(ticker){
+  try {
+    const res = await fetch(`data/summary_${ticker}.json`);
+    if(!res.ok){
+      document.getElementById("resultBox").textContent = "No local summary found for this ticker.";
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    document.getElementById("resultBox").textContent = "Error loading summary.";
+    console.error(e);
+    return null;
+  }
+}
+
+async function analyze(){
+  const ticker = document.getElementById("ticker").value.toUpperCase().trim();
+  document.getElementById("spinner").style.display = "inline";
+  const s = await loadSummary(ticker);
+  document.getElementById("spinner").style.display = "none";
+  if(!s) return;
+
+  // Update text fields
+  document.getElementById("resultBox").textContent =
+    `${ticker}: ${s.trend_bias} (${s.momentum}) · RSI ${s.rsi14.toFixed(1)} · Close $${s.close}`;
+  document.getElementById("kvTrend").textContent = s.trend_bias;
+  document.getElementById("kvMomentum").textContent = s.momentum;
+  document.getElementById("kvRSI").textContent = s.rsi14.toFixed(1);
+  const sup = s.support?.length ? s.support.join(", ") : "—";
+  const res = s.resistance?.length ? s.resistance.join(", ") : "—";
+  document.getElementById("kvSR").textContent = `S: ${sup} | R: ${res}`;
+}
+
+document.getElementById("analyzeBtn").addEventListener("click", analyze);
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const txt = document.getElementById("resultBox").textContent;
+  navigator.clipboard.writeText(txt);
+  alert("Summary copied!");
+});
+
+
   </script>
 </body>
 </html>
